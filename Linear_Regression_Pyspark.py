@@ -150,7 +150,7 @@ test_result = test_results.predictions
 test_result.filter(test_result["isFraud"] == 1).show(5)
 
 tp = test_result[(test_result.isFraud == 1) & (test_result.prediction == 1)].count()
-tn = test_result[(test_result.isFraud == 0) & (test_result.prediction == 1)].count()
+tn = test_result[(test_result.isFraud == 0) & (test_result.prediction == 0)].count()
 fp = test_result[(test_result.isFraud == 0) & (test_result.prediction == 1)].count()
 fn = test_result[(test_result.isFraud == 1) & (test_result.prediction == 0)].count()
 accuracy = float(tp + tn) / (tp + tn + fp + fn)
