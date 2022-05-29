@@ -55,7 +55,7 @@ from pyspark.ml.feature import StringIndexer
 # indexed = indexer.setHandleInvalid("skip").fit(indexed).transform(indexed)
 indexed = df.withColumn("cardPresent", df.cardPresent.cast('int'))
 indexed = indexed.withColumn("isFraud", indexed.isFraud.cast('int'))
-indexed = indexed.withColumn("expirationDateKeyInMatch", indexed.isFraud.cast('int'))
+indexed = indexed.withColumn("expirationDateKeyInMatch", indexed.expirationDateKeyInMatch.cast('int'))
 
 
 # In[24]:
@@ -81,7 +81,7 @@ indexed.columns
 
 # Create assembler object to include only relevant columns 
 assembler = VectorAssembler(
-inputCols=["accountNumber", "customerId", "creditLimit", "transactionAmount", "cardCVV", "enteredCVV", "cardLast4Digits", "currentBalance", "cardPresent", "expirationDateKeyInMatch"],
+inputCols=["accountNumber", "customerId", "creditLimit", "availableMoney", "transactionAmount", "cardCVV", "enteredCVV", "cardLast4Digits", "currentBalance", "cardPresent", "expirationDateKeyInMatch"],
 outputCol="features")
 
 
