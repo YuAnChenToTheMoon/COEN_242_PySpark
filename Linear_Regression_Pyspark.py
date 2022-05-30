@@ -1,6 +1,7 @@
 #Start a new Spark Session
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
+from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 
 # App named 'Cruise'
 spark = SparkSession.builder.appName('cruise').getOrCreate()
@@ -117,6 +118,7 @@ train_data,test_data = final_data.randomSplit([0.70,0.30])
 
 from pyspark.ml.regression import LinearRegression
 from pyspark.ml.classification import LogisticRegression
+from pyspark.ml.classification import RandomForestClassifier
 
 
 # In[34]:
@@ -124,14 +126,16 @@ from pyspark.ml.classification import LogisticRegression
 
 #Training the linear model
 # lr = LinearRegression(labelCol="availableMoney")
-lr = LogisticRegression(labelCol="isFraud")
+# lr = LogisticRegression(labelCol="isFraud")
+rf = RandomForestClassifier(labelCol="isFraud", featuresCol="features", numTrees=10)
 
 
 # # In[35]:
 
 
 
-lrModel = lr.fit(train_data)
+# lrModel = lr.fit(train_data) # for logistic regression
+rfModel = rf.fit(train_data)
 
 
 # # In[39]:
@@ -141,31 +145,37 @@ lrModel = lr.fit(train_data)
 # print("Coefficients: {} Intercept: {}".format(lrModel.coefficients,lrModel.intercept))
 
 
-# # In[40]:
+# # In[40
 
+# Evaluate random forest 
+predictions = rfModel.transform(test_data)
+evaluator = MulticlassClassificationEvaluator(
+    labelCol="isFraud", predictionCol="prediction", metricName="accuracy")
+accuracy = evaluator.evaluate(predictions)
+print("accuracy = %g" % accuracy)
 
-# #Evaluate the results with the test data
-test_results = lrModel.evaluate(test_data)
-test_result = test_results.predictions
-test_result.filter(test_result["isFraud"] == 1).show(5)
+# #Evaluate the results with the test data for logistic regression
+# test_results = lrModel.evaluate(test_data)
+# test_result = test_results.predictions
+# test_result.filter(test_result["isFraud"] == 1).show(5)
 
-tp = test_result[(test_result.isFraud == 1) & (test_result.prediction == 1)].count()
-tn = test_result[(test_result.isFraud == 0) & (test_result.prediction == 0)].count()
-fp = test_result[(test_result.isFraud == 0) & (test_result.prediction == 1)].count()
-fn = test_result[(test_result.isFraud == 1) & (test_result.prediction == 0)].count()
-accuracy = float(tp + tn) / (tp + tn + fp + fn)
-precision = float(tp) / (tp + fp)
-recall = float(tp) / (tp + fn)
-f1 = 2*(recall*precision)/(recall+precision)
-final_data.groupBy("isFraud").count().show()
-print("tp:", tp)
-print("tn:", tn)
-print("fp:", fp)
-print("fn:", fn)
-print("accuracy:", accuracy)
-print("precision:", precision)
-print("recall:", recall)
-print("F1 score:", f1)
+# tp = test_result[(test_result.isFraud == 1) & (test_result.prediction == 1)].count()
+# tn = test_result[(test_result.isFraud == 0) & (test_result.prediction == 0)].count()
+# fp = test_result[(test_result.isFraud == 0) & (test_result.prediction == 1)].count()
+# fn = test_result[(test_result.isFraud == 1) & (test_result.prediction == 0)].count()
+# accuracy = float(tp + tn) / (tp + tn + fp + fn)
+# precision = float(tp) / (tp + fp)
+# recall = float(tp) / (tp + fn)
+# f1 = 2*(recall*precision)/(recall+precision)
+# final_data.groupBy("isFraud").count().show()
+# print("tp:", tp)
+# print("tn:", tn)
+# print("fp:", fp)
+# print("fn:", fn)
+# print("accuracy:", accuracy)
+# print("precision:", precision)
+# print("recall:", recall)
+# print("F1 score:", f1)
 
 # # In[41]:
 
