@@ -2,6 +2,7 @@
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
+from datetime import datetime
 
 # App named 'Cruise'
 spark = SparkSession.builder.appName('cruise').getOrCreate()
@@ -44,52 +45,53 @@ df.describe().show()
 
 #Convert string categorical values to integer categorical values
 from pyspark.ml.feature import StringIndexer
+
+df = df.withColumn("cardPresent", df.cardPresent.cast('int'))
+df = df.withColumn("isFraud", df.isFraud.cast('int'))
+df = df.withColumn("expirationDateKeyInMatch", df.expirationDateKeyInMatch.cast('int'))
+
+
+
 # indexer = StringIndexer(inputCol="merchantName", outputCol = "merchantNameNum")
-# indexed = indexer.setHandleInvalid("skip").fit(df).transform(df)
+# df = indexer.setHandleInvalid("skip").fit(df).transform(df)
 # indexer = StringIndexer(inputCol="acqCountry", outputCol = "acqCountryNum")
-# indexed = indexer.setHandleInvalid("skip").fit(indexed).transform(indexed)
+# df = indexer.setHandleInvalid("skip").fit(df).transform(df)
 # indexer = StringIndexer(inputCol="merchantCountryCode", outputCol = "merchantCountryCodeNum")
-# indexed = indexer.setHandleInvalid("skip").fit(indexed).transform(indexed)
+# df = indexer.setHandleInvalid("skip").fit(df).transform(df)
 # indexer = StringIndexer(inputCol="merchantCategoryCode", outputCol = "merchantCategoryNum")
-# indexed = indexer.setHandleInvalid("skip").fit(indexed).transform(indexed)
+# df = indexer.setHandleInvalid("skip").fit(df).transform(df)
 # indexer = StringIndexer(inputCol="transactionType", outputCol = "transactionTypeNum")
-# indexed = indexer.setHandleInvalid("skip").fit(indexed).transform(indexed)
-indexed = df.withColumn("cardPresent", df.cardPresent.cast('int'))
-indexed = indexed.withColumn("isFraud", indexed.isFraud.cast('int'))
-indexed = indexed.withColumn("expirationDateKeyInMatch", indexed.expirationDateKeyInMatch.cast('int'))
+# df = indexer.setHandleInvalid("skip").fit(df).transform(df)
 
 
 # In[24]:
 
 
-from pyspark.ml.linalg import Vectors
 
-
-# In[25]:
-
-
-from pyspark.ml.feature import VectorAssembler
 
 
 # In[26]:
 
 
-indexed.columns
+df.columns
 
 
 # In[28]:
 
 
 # Create assembler object to include only relevant columns 
+
+from pyspark.ml.linalg import Vectors
+from pyspark.ml.feature import VectorAssembler
 assembler = VectorAssembler(
 inputCols=["accountNumber", "customerId", "creditLimit", "availableMoney", "transactionAmount", "cardCVV", "enteredCVV", "cardLast4Digits", "currentBalance", "cardPresent", "expirationDateKeyInMatch"],
 outputCol="features")
-
+output = assembler.transform(df)
 
 # In[29]:
 
 
-output = assembler.transform(indexed)
+
 
 
 # In[30]:
@@ -119,6 +121,7 @@ train_data,test_data = final_data.randomSplit([0.70,0.30])
 from pyspark.ml.regression import LinearRegression
 from pyspark.ml.classification import LogisticRegression
 from pyspark.ml.classification import RandomForestClassifier
+from pyspark.ml.clustering import KMeans
 
 
 # In[34]:
@@ -127,16 +130,18 @@ from pyspark.ml.classification import RandomForestClassifier
 #Training the linear model
 # lr = LinearRegression(labelCol="availableMoney")
 # lr = LogisticRegression(labelCol="isFraud")
-rf = RandomForestClassifier(labelCol="isFraud", featuresCol="features", numTrees=10)
+# rf = RandomForestClassifier(labelCol="isFraud", featuresCol="features", numTrees=10)
+kmeans = KMeans(k=2, seed=0)
 
 
 # # In[35]:
 
 
-
+start_time = datetime.now()
 # lrModel = lr.fit(train_data) # for logistic regression
-rfModel = rf.fit(train_data)
-
+# rfModel = rf.fit(train_data)
+kmeans = kmeans.fit(train_data)
+duration = (datetime.now() - start_time).total_seconds()
 
 # # In[39]:
 
@@ -147,12 +152,20 @@ rfModel = rf.fit(train_data)
 
 # # In[40
 
+# Evaluate Kmeans:
+from pyspark.ml.evaluation import ClusteringEvaluator
+# Evaluate clustering by computing Silhouette score
+predictions = kmeans.transform(test_data)
+evaluator = ClusteringEvaluator()
+silhouette = evaluator.evaluate(predictions)
+print("\n\nSilhouette with squared euclidean distance = " + str(silhouette) + "\n\n")
+
 # Evaluate random forest 
-predictions = rfModel.transform(test_data)
-evaluator = MulticlassClassificationEvaluator(
-    labelCol="isFraud", predictionCol="prediction", metricName="accuracy")
-accuracy = evaluator.evaluate(predictions)
-print("accuracy = %g" % accuracy)
+# predictions = rfModel.transform(test_data)
+# evaluator = MulticlassClassificationEvaluator(
+#     labelCol="isFraud", predictionCol="prediction", metricName="accuracy")
+# accuracy = evaluator.evaluate(predictions)
+# print("accuracy = %g" % accuracy)
 
 # #Evaluate the results with the test data for logistic regression
 # test_results = lrModel.evaluate(test_data)
@@ -167,15 +180,18 @@ print("accuracy = %g" % accuracy)
 # precision = float(tp) / (tp + fp)
 # recall = float(tp) / (tp + fn)
 # f1 = 2*(recall*precision)/(recall+precision)
+# print "\n\n"
+# print "execution time:", duration, "seconds"
+# print "tp:", tp
+# print "tn:", tn
+# print "fp:", fp
+# print "fn:", fn 
+# print "accuracy:", accuracy * 100 , "%"
+# print "precision:", precision * 100 , "%"
+# print "recall:", recall * 100 , "%"
+# print "F1 score:", f1
+# print "\n\n"
 # final_data.groupBy("isFraud").count().show()
-# print("tp:", tp)
-# print("tn:", tn)
-# print("fp:", fp)
-# print("fn:", fn)
-# print("accuracy:", accuracy)
-# print("precision:", precision)
-# print("recall:", recall)
-# print("F1 score:", f1)
 
 # # In[41]:
 
